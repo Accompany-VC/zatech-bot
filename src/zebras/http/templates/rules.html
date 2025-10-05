@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block page_title %}Channel Rules{% endblock %}
+
+{% block content %}
+<div x-data="channelRules()" x-init="loadChannels()">
+    <!-- Header -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold mb-2 flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-5 h-5 text-blue-400"></i>
+            Channel Governance Rules
+        </h3>
+        <p class="text-sm text-gray-400">
+            Configure posting rules for individual channels. Control bot messages, top-level posts, and thread replies.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Channel Selector -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <label class="block text-sm font-medium text-gray-400 mb-3">Select Channel</label>
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-gray-500"></i>
+                <input type="text" x-model="channelSearch" @input="filterChannels()"
+                       placeholder="Search channels..."
+                       class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3">
+            </div>
+
+            <div class="space-y-2 max-h-96 overflow-y-auto">
+                <template x-for="channel in filteredChannels" :key="channel.id">
+                    <button @click="selectChannel(channel)"
+                            class="w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left"
+                            :class="selectedChannel?.id === channel.id ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'">
+                        <i data-lucide="hash" class="w-4 h-4"></i>
+                        <span x-text="channel.name" class="flex-1"></span>
+                        <span x-show="channelHasRules(channel.id)"
+                              class="w-2 h-2 bg-blue-400 rounded-full"
+                              title="Has custom rules"></span>
+                    </button>
+                </template>
+                <div x-show="filteredChannels.length === 0" class="text-center text-gray-500 py-8">
+                    No channels found
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules Configuration -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <div x-show="!selectedChannel" class="text-center text-gray-500 py-16">
+                <i data-lucide="arrow-left" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                <p>Select a channel to configure rules</p>
+            </div>
+
+            <div x-show="selectedChannel" x-cloak>
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-lg font-semibold flex items-center gap-2">
+                        <i data-lucide="hash" class="w-5 h-5 text-blue-400"></i>
+                        <span x-text="selectedChannel?.name"></span>
+                    </h4>
+                </div>
+
+                <form @submit.prevent="saveRules()" class="space-y-6">
+                    <!-- Bot Messages -->
+                    <div class="flex items-start gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium mb-1">Bot Messages</label>
+                            <p class="text-xs text-gray-400">Allow or block messages from bots</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" x-model="rules.allow_bots" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-3 text-sm font-medium" x-text="rules.allow_bots ? 'Allowed' : 'Blocked'"></span>
+                        </label>
+                    </div>
+
+                    <div class="border-t border-gray-800"></div>
+
+                    <!-- Top-level Posts -->
+                    <div class="flex items-start gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium mb-1">Top-level Posts</label>
+                            <p class="text-xs text-gray-400">Allow or block new messages (not in threads)</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" x-model="rules.allow_top_level_posts" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-3 text-sm font-medium" x-text="rules.allow_top_level_posts ? 'Allowed' : 'Blocked'"></span>
+                        </label>
+                    </div>
+
+                    <div class="border-t border-gray-800"></div>
+
+                    <!-- Thread Replies -->
+                    <div class="flex items-start gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium mb-1">Thread Replies</label>
+                            <p class="text-xs text-gray-400">Allow or block messages in threads</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" x-model="rules.allow_thread_replies" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-3 text-sm font-medium" x-text="rules.allow_thread_replies ? 'Allowed' : 'Blocked'"></span>
+                        </label>
+                    </div>
+
+                    <div class="border-t border-gray-800"></div>
+
+                    <!-- Preview -->
+                    <div class="bg-gray-800 rounded-lg p-4">
+                        <h5 class="text-sm font-medium mb-3 flex items-center gap-2">
+                            <i data-lucide="eye" class="w-4 h-4 text-gray-400"></i>
+                            What will be blocked?
+                        </h5>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="x-circle" class="w-4 h-4 text-red-400" x-show="!rules.allow_bots"></i>
+                                <i data-lucide="check-circle" class="w-4 h-4 text-green-400" x-show="rules.allow_bots"></i>
+                                <span :class="rules.allow_bots ? 'text-gray-400 line-through' : 'text-red-400'">Bot messages</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="x-circle" class="w-4 h-4 text-red-400" x-show="!rules.allow_top_level_posts"></i>
+                                <i data-lucide="check-circle" class="w-4 h-4 text-green-400" x-show="rules.allow_top_level_posts"></i>
+                                <span :class="rules.allow_top_level_posts ? 'text-gray-400 line-through' : 'text-red-400'">New messages (top-level)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="x-circle" class="w-4 h-4 text-red-400" x-show="!rules.allow_thread_replies"></i>
+                                <i data-lucide="check-circle" class="w-4 h-4 text-green-400" x-show="rules.allow_thread_replies"></i>
+                                <span :class="rules.allow_thread_replies ? 'text-gray-400 line-through' : 'text-red-400'">Thread replies</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center justify-between pt-4">
+                        <button type="button" @click="resetToDefaults()"
+                                class="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
+                            Reset to Defaults
+                        </button>
+                        <button type="submit"
+                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                            Save Rules
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function channelRules() {
+        return {
+            channels: [],
+            filteredChannels: [],
+            selectedChannel: null,
+            channelSearch: '',
+            channelRulesMap: {},
+            rules: {
+                allow_bots: true,
+                allow_top_level_posts: true,
+                allow_thread_replies: true
+            },
+
+            async loadChannels() {
+                try {
+                    const response = await fetch('/api/v1/channels');
+                    this.channels = await response.json();
+                    this.filteredChannels = this.channels;
+                    lucide.createIcons();
+                } catch (error) {
+                    console.error('Failed to load channels:', error);
+                    showToast('Failed to load channels', 'error');
+                }
+            },
+
+            filterChannels() {
+                if (!this.channelSearch) {
+                    this.filteredChannels = this.channels;
+                } else {
+                    const query = this.channelSearch.toLowerCase();
+                    this.filteredChannels = this.channels.filter(c =>
+                        c.name.toLowerCase().includes(query)
+                    );
+                }
+            },
+
+            async selectChannel(channel) {
+                this.selectedChannel = channel;
+                await this.loadChannelRules(channel.id);
+                lucide.createIcons();
+            },
+
+            async loadChannelRules(channelId) {
+                try {
+                    const response = await fetch(`/api/v1/rules/${channelId}`);
+                    const data = await response.json();
+
+                    if (data) {
+                        this.rules = {
+                            allow_bots: data.allow_bots,
+                            allow_top_level_posts: data.allow_top_level_posts,
+                            allow_thread_replies: data.allow_thread_replies
+                        };
+                        this.channelRulesMap[channelId] = true;
+                    } else {
+                        this.resetToDefaults();
+                    }
+                } catch (error) {
+                    console.error('Failed to load channel rules:', error);
+                    this.resetToDefaults();
+                }
+            },
+
+            async saveRules() {
+                if (!this.selectedChannel) return;
+
+                try {
+                    const response = await fetch(`/api/v1/rules/${this.selectedChannel.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.rules)
+                    });
+
+                    if (!response.ok) throw new Error('Failed to save rules');
+
+                    this.channelRulesMap[this.selectedChannel.id] = true;
+                    showToast('Channel rules saved successfully', 'success');
+                } catch (error) {
+                    console.error('Failed to save rules:', error);
+                    showToast('Failed to save rules', 'error');
+                }
+            },
+
+            resetToDefaults() {
+                this.rules = {
+                    allow_bots: true,
+                    allow_top_level_posts: true,
+                    allow_thread_replies: true
+                };
+            },
+
+            channelHasRules(channelId) {
+                return this.channelRulesMap[channelId] === true;
+            }
+        };
+    }
+</script>
+{% endblock %}

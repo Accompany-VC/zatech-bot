@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block header_actions %}
+<button @click="loadStats()" class="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-sm">
+    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+    <span>Refresh</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<div x-data="dashboard()" x-init="init()">
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Auto Responder -->
+        <a href="/autoresponder" class="bg-gradient-to-br from-purple-900/50 to-purple-800/30 border border-purple-700/50 rounded-lg p-6 hover:border-purple-600 transition-all group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
+                    <i data-lucide="message-square" class="w-6 h-6 text-purple-400"></i>
+                </div>
+                <i data-lucide="arrow-right" class="w-5 h-5 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-1" x-text="stats.autoresponder.total_rules">0</h3>
+            <p class="text-sm text-gray-400">Auto Response Rules</p>
+            <div class="mt-3 flex items-center gap-2 text-xs">
+                <span class="text-green-400" x-text="stats.autoresponder.active_rules + ' active'">0 active</span>
+                <span class="text-gray-600">•</span>
+                <span class="text-blue-400" x-text="stats.autoresponder.global_rules + ' global'">0 global</span>
+            </div>
+        </a>
+
+        <!-- Channel Rules -->
+        <a href="/rules" class="bg-gradient-to-br from-blue-900/50 to-blue-800/30 border border-blue-700/50 rounded-lg p-6 hover:border-blue-600 transition-all group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-blue-400"></i>
+                </div>
+                <i data-lucide="arrow-right" class="w-5 h-5 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-1" x-text="stats.channels.with_rules || '0'">0</h3>
+            <p class="text-sm text-gray-400">Channels with Rules</p>
+            <div class="mt-3 flex items-center gap-2 text-xs">
+                <span class="text-gray-400">Configure permissions</span>
+            </div>
+        </a>
+
+        <!-- Invite Helper -->
+        <a href="/invite" class="bg-gradient-to-br from-green-900/50 to-green-800/30 border border-green-700/50 rounded-lg p-6 hover:border-green-600 transition-all group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                    <i data-lucide="user-plus" class="w-6 h-6 text-green-400"></i>
+                </div>
+                <i data-lucide="arrow-right" class="w-5 h-5 text-green-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-1">
+                <span x-show="stats.invite.configured" class="text-green-400">ON</span>
+                <span x-show="!stats.invite.configured" class="text-gray-500">OFF</span>
+            </h3>
+            <p class="text-sm text-gray-400">Invite Helper</p>
+            <div class="mt-3 flex items-center gap-2 text-xs">
+                <span class="text-gray-400" x-text="stats.invite.configured ? 'Configured' : 'Not configured'">Not configured</span>
+            </div>
+        </a>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-8">
+        <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <a href="/autoresponder" class="flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors border border-gray-700">
+                <i data-lucide="plus-circle" class="w-5 h-5 text-purple-400"></i>
+                <span class="text-sm">Add Auto Response Rule</span>
+            </a>
+            <a href="/rules" class="flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors border border-gray-700">
+                <i data-lucide="settings" class="w-5 h-5 text-blue-400"></i>
+                <span class="text-sm">Configure Channel Rules</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Health -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <h3 class="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-400">
+                <i data-lucide="activity" class="w-4 h-4"></i>
+                System Health
+            </h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">API Status</span>
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span class="text-sm text-green-400">Healthy</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Mode</span>
+                    <span class="text-sm text-white font-mono">HTTP</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">Port</span>
+                    <span class="text-sm text-white font-mono">43117</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- About -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <h3 class="text-sm font-semibold mb-4 flex items-center gap-2 text-gray-400">
+                <i data-lucide="info" class="w-4 h-4"></i>
+                About ZEBRAS
+            </h3>
+            <p class="text-sm text-gray-400 mb-3">
+                ZaTech Engagement Bot for Responses, Automation & Support
+            </p>
+            <div class="space-y-2 text-xs">
+                <a href="https://github.com/your-org/zatech-bot" class="flex items-center gap-2 text-purple-400 hover:text-purple-300">
+                    <i data-lucide="github" class="w-4 h-4"></i>
+                    <span>View on GitHub</span>
+                </a>
+                <a href="/healthz" class="flex items-center gap-2 text-blue-400 hover:text-blue-300">
+                    <i data-lucide="activity" class="w-4 h-4"></i>
+                    <span>Health Check</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function dashboard() {
+        return {
+            stats: {
+                autoresponder: {
+                    total_rules: 0,
+                    active_rules: 0,
+                    global_rules: 0
+                },
+                channels: {
+                    total: 0,
+                    with_rules: 0
+                },
+                invite: {
+                    configured: false
+                }
+            },
+
+            async init() {
+                await this.loadStats();
+                // Auto-refresh every 30 seconds
+                setInterval(() => this.loadStats(), 30000);
+            },
+
+            async loadStats() {
+                try {
+                    const response = await fetch('/api/v1/stats');
+                    const data = await response.json();
+                    this.stats = data;
+
+                    // Re-initialize icons after data update
+                    setTimeout(() => lucide.createIcons(), 100);
+                } catch (error) {
+                    console.error('Failed to load stats:', error);
+                }
+            }
+        };
+    }
+</script>
+{% endblock %}

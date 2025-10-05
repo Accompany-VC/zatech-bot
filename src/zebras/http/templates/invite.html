@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block page_title %}Invite Helper{% endblock %}
+
+{% block content %}
+<div x-data="inviteSettings()" x-init="loadSettings(); loadChannels()">
+    <!-- Header -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold mb-2 flex items-center gap-2">
+            <i data-lucide="user-plus" class="w-5 h-5 text-green-400"></i>
+            Invite Helper Settings
+        </h3>
+        <p class="text-sm text-gray-400">
+            Configure how ZEBRAS handles invite requests and welcomes new members.
+        </p>
+    </div>
+
+    <div class="max-w-2xl">
+        <form @submit.prevent="saveSettings()" class="space-y-6">
+            <!-- Admin Channel -->
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                <label class="block text-sm font-medium mb-3 flex items-center gap-2">
+                    <i data-lucide="shield" class="w-4 h-4 text-purple-400"></i>
+                    Admin Channel
+                </label>
+                <p class="text-sm text-gray-400 mb-3">
+                    Channel where invite requests and admin notifications are sent.
+                </p>
+                <select x-model="settings.admin_channel_id"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select channel --</option>
+                    <template x-for="channel in channels" :key="channel.id">
+                        <option :value="channel.id" x-text="'# ' + channel.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <!-- Audit Channel -->
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                <label class="block text-sm font-medium mb-3 flex items-center gap-2">
+                    <i data-lucide="clipboard-list" class="w-4 h-4 text-blue-400"></i>
+                    Audit Channel
+                </label>
+                <p class="text-sm text-gray-400 mb-3">
+                    Channel where audit logs and activity records are posted.
+                </p>
+                <select x-model="settings.audit_channel_id"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select channel --</option>
+                    <template x-for="channel in channels" :key="channel.id">
+                        <option :value="channel.id" x-text="'# ' + channel.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <!-- Notify on Join -->
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                <div class="flex items-start gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium mb-1 flex items-center gap-2">
+                            <i data-lucide="bell" class="w-4 h-4 text-yellow-400"></i>
+                            Notify on Join
+                        </label>
+                        <p class="text-xs text-gray-400">
+                            Send a notification to the admin channel when a new user joins the workspace.
+                        </p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" x-model="settings.notify_on_join" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        <span class="ml-3 text-sm font-medium" x-text="settings.notify_on_join ? 'ON' : 'OFF'"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Welcome DM Message -->
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                <label class="block text-sm font-medium mb-3 flex items-center gap-2">
+                    <i data-lucide="message-circle" class="w-4 h-4 text-green-400"></i>
+                    Welcome DM Message
+                </label>
+                <p class="text-sm text-gray-400 mb-3">
+                    Custom message sent via DM to new members. Leave empty to disable welcome DMs.
+                </p>
+                <textarea x-model="settings.dm_message" rows="5"
+                          placeholder="Welcome to our community! Feel free to introduce yourself in #introductions."
+                          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+
+                <!-- Preview -->
+                <div x-show="settings.dm_message" x-cloak class="mt-4 bg-gray-800 rounded-lg p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded flex items-center justify-center text-sm">
+                            🦓
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-sm font-medium">ZEBRAS Bot</span>
+                                <span class="text-xs text-gray-500">APP • Just now</span>
+                            </div>
+                            <p class="text-sm text-gray-300" x-text="settings.dm_message"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-3 pt-4">
+                <button type="button" @click="loadSettings()"
+                        class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
+                    Reset
+                </button>
+                <button type="submit"
+                        class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>Save Settings</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="mt-8 bg-blue-900/20 border border-blue-800 rounded-lg p-6">
+        <div class="flex items-start gap-3">
+            <i data-lucide="info" class="w-5 h-5 text-blue-400 mt-0.5"></i>
+            <div>
+                <h4 class="font-medium text-blue-300 mb-2">How it works</h4>
+                <ul class="text-sm text-blue-200 space-y-1">
+                    <li>• Admin channel receives invite requests from potential members</li>
+                    <li>• Audit channel logs all join events and member activity</li>
+                    <li>• Welcome DMs are sent automatically when new members join</li>
+                    <li>• Notifications can be toggled on/off based on your needs</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function inviteSettings() {
+        return {
+            settings: {
+                admin_channel_id: '',
+                audit_channel_id: '',
+                notify_on_join: false,
+                dm_message: ''
+            },
+            channels: [],
+
+            async loadChannels() {
+                try {
+                    const response = await fetch('/api/v1/channels');
+                    this.channels = await response.json();
+                    lucide.createIcons();
+                } catch (error) {
+                    console.error('Failed to load channels:', error);
+                    showToast('Failed to load channels', 'error');
+                }
+            },
+
+            async loadSettings() {
+                try {
+                    const response = await fetch('/api/v1/invite/settings');
+                    const data = await response.json();
+
+                    if (data) {
+                        this.settings = {
+                            admin_channel_id: data.admin_channel_id || '',
+                            audit_channel_id: data.audit_channel_id || '',
+                            notify_on_join: data.notify_on_join || false,
+                            dm_message: data.dm_message || ''
+                        };
+                    }
+                } catch (error) {
+                    console.error('Failed to load settings:', error);
+                }
+            },
+
+            async saveSettings() {
+                try {
+                    const payload = {
+                        admin_channel_id: this.settings.admin_channel_id || null,
+                        audit_channel_id: this.settings.audit_channel_id || null,
+                        notify_on_join: this.settings.notify_on_join,
+                        dm_message: this.settings.dm_message || null
+                    };
+
+                    const response = await fetch('/api/v1/invite/settings', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error('Failed to save settings');
+
+                    showToast('Invite settings saved successfully', 'success');
+                } catch (error) {
+                    console.error('Failed to save settings:', error);
+                    showToast('Failed to save settings', 'error');
+                }
+            }
+        };
+    }
+</script>
+{% endblock %}

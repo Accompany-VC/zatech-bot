@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block page_title %}Auto Responder{% endblock %}
+
+{% block header_actions %}
+<button @click="showAddModal = true" class="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    <span>Add Rule</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<div x-data="autoresponder()" x-init="loadRules()">
+    <!-- Filter Bar -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
+        <div class="flex items-center gap-4">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-400 mb-2">Scope</label>
+                <select x-model="selectedScope" @change="loadRules()"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="">GLOBAL</option>
+                    <template x-for="channel in channels" :key="channel.id">
+                        <option :value="channel.id" x-text="'# ' + channel.name"></option>
+                    </template>
+                </select>
+            </div>
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-400 mb-2">Search</label>
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-gray-500"></i>
+                    <input type="text" x-model="searchQuery" @input="filterRules()"
+                           placeholder="Search rules..."
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules Table -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-800 border-b border-gray-700">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">ID</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Scope</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Match</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Phrase</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Response</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                <template x-for="rule in filteredRules" :key="rule.id">
+                    <tr class="hover:bg-gray-800/50 transition-colors">
+                        <td class="px-4 py-3 text-sm text-gray-300" x-text="rule.id"></td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                  :class="rule.enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'"
+                                  x-text="rule.enabled ? 'Active' : 'Disabled'"></span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                  :class="rule.channel_id ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'"
+                                  x-text="rule.channel_id ? getChannelName(rule.channel_id) : 'GLOBAL'"></span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-400">
+                            <div class="flex items-center gap-1">
+                                <span x-text="rule.match_type"></span>
+                                <span x-show="rule.case_sensitive" class="text-xs text-yellow-400" title="Case sensitive">Aa</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <code class="text-purple-300 bg-gray-800 px-2 py-1 rounded" x-text="rule.phrase"></code>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <code class="text-green-300 bg-gray-800 px-2 py-1 rounded" x-text="rule.response_text"></code>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button @click="toggleRule(rule)"
+                                        class="p-2 hover:bg-gray-700 rounded transition-colors"
+                                        :title="rule.enabled ? 'Disable' : 'Enable'">
+                                    <i :data-lucide="rule.enabled ? 'toggle-right' : 'toggle-left'"
+                                       :class="rule.enabled ? 'text-green-400' : 'text-gray-500'"
+                                       class="w-4 h-4"></i>
+                                </button>
+                                <button @click="deleteRule(rule)"
+                                        class="p-2 hover:bg-gray-700 rounded transition-colors text-red-400"
+                                        title="Delete">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="filteredRules.length === 0">
+                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                        <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                        <p>No rules found</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add Rule Modal -->
+    <div x-show="showAddModal"
+         x-cloak
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+         @click.self="showAddModal = false">
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold">Add Auto Response Rule</h3>
+                <button @click="showAddModal = false" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <form @submit.prevent="addRule()" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Scope</label>
+                        <select x-model="newRule.channel_id"
+                                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="">GLOBAL (all channels)</option>
+                            <template x-for="channel in channels" :key="channel.id">
+                                <option :value="channel.id" x-text="'# ' + channel.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Match Type</label>
+                        <select x-model="newRule.match_type"
+                                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="contains">Contains</option>
+                            <option value="exact">Exact Match</option>
+                            <option value="regex">Regex</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Phrase/Pattern</label>
+                    <input type="text" x-model="newRule.phrase" required
+                           placeholder="e.g., hello, hi, hey"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Response Text</label>
+                    <textarea x-model="newRule.response_text" required rows="3"
+                              placeholder="Hello! How can I help you today?"
+                              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" x-model="newRule.case_sensitive" id="case-sensitive"
+                           class="w-4 h-4 bg-gray-800 border-gray-700 rounded text-purple-600 focus:ring-purple-500">
+                    <label for="case-sensitive" class="text-sm text-gray-400">Case sensitive</label>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-4">
+                    <button type="button" @click="showAddModal = false"
+                            class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors">
+                        Add Rule
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function autoresponder() {
+        return {
+            rules: [],
+            filteredRules: [],
+            channels: [],
+            selectedScope: '',
+            searchQuery: '',
+            showAddModal: false,
+            newRule: {
+                phrase: '',
+                response_text: '',
+                match_type: 'contains',
+                case_sensitive: false,
+                channel_id: ''
+            },
+
+            async init() {
+                await this.loadChannels();
+                await this.loadRules();
+            },
+
+            async loadChannels() {
+                try {
+                    const response = await fetch('/api/v1/channels');
+                    this.channels = await response.json();
+                } catch (error) {
+                    console.error('Failed to load channels:', error);
+                    showToast('Failed to load channels', 'error');
+                }
+            },
+
+            async loadRules() {
+                try {
+                    const url = `/api/v1/autoresponder/rules${this.selectedScope ? '?channel_id=' + this.selectedScope : ''}`;
+                    const response = await fetch(url);
+                    this.rules = await response.json();
+                    this.filterRules();
+                    lucide.createIcons();
+                } catch (error) {
+                    console.error('Failed to load rules:', error);
+                    showToast('Failed to load rules', 'error');
+                }
+            },
+
+            filterRules() {
+                if (!this.searchQuery) {
+                    this.filteredRules = this.rules;
+                } else {
+                    const query = this.searchQuery.toLowerCase();
+                    this.filteredRules = this.rules.filter(r =>
+                        r.phrase.toLowerCase().includes(query) ||
+                        r.response_text.toLowerCase().includes(query)
+                    );
+                }
+            },
+
+            getChannelName(channelId) {
+                const channel = this.channels.find(c => c.id === channelId);
+                return channel ? '# ' + channel.name : channelId;
+            },
+
+            async addRule() {
+                try {
+                    const payload = {
+                        ...this.newRule,
+                        channel_id: this.newRule.channel_id || null
+                    };
+                    const response = await fetch('/api/v1/autoresponder/rules', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error('Failed to create rule');
+
+                    showToast('Rule created successfully', 'success');
+                    this.showAddModal = false;
+                    this.newRule = {
+                        phrase: '',
+                        response_text: '',
+                        match_type: 'contains',
+                        case_sensitive: false,
+                        channel_id: ''
+                    };
+                    await this.loadRules();
+                } catch (error) {
+                    console.error('Failed to add rule:', error);
+                    showToast('Failed to create rule', 'error');
+                }
+            },
+
+            async toggleRule(rule) {
+                try {
+                    const response = await fetch(`/api/v1/autoresponder/rules/${rule.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: !rule.enabled })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to toggle rule');
+
+                    showToast(`Rule ${rule.enabled ? 'disabled' : 'enabled'}`, 'success');
+                    await this.loadRules();
+                } catch (error) {
+                    console.error('Failed to toggle rule:', error);
+                    showToast('Failed to toggle rule', 'error');
+                }
+            },
+
+            async deleteRule(rule) {
+                if (!confirm(`Delete rule #${rule.id}?`)) return;
+
+                try {
+                    const response = await fetch(`/api/v1/autoresponder/rules/${rule.id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) throw new Error('Failed to delete rule');
+
+                    showToast('Rule deleted successfully', 'success');
+                    await this.loadRules();
+                } catch (error) {
+                    console.error('Failed to delete rule:', error);
+                    showToast('Failed to delete rule', 'error');
+                }
+            }
+        };
+    }
+</script>
+{% endblock %}

@@ -5,9 +5,11 @@ import hashlib
 import logging
 import time
 from typing import Any, Dict
+from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException, Form
-from fastapi.responses import JSONResponse, PlainTextResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, HTMLResponse, RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import FormData
 import json
 
@@ -17,9 +19,13 @@ from ..plugins.invite.repository import InviteSettingsRepository
 from ..rules.repository import ChannelRuleRepository
 from ..plugins.autoresponder.repository import AutoResponderRepository
 from ..plugin.registry import Registry
+from .api import router as api_router
 
 
 log = logging.getLogger("zebras.http")
+
+# Get the directory where this file lives
+BASE_DIR = Path(__file__).parent
 
 
 def verify_slack_signature(req: Request, signing_secret: str, body: bytes) -> None:
@@ -38,6 +44,14 @@ def verify_slack_signature(req: Request, signing_secret: str, body: bytes) -> No
 
 def create_app(router: Router, signing_secret: str | None, registry: Registry) -> FastAPI:
     app = FastAPI()
+
+    # Mount static files
+    static_dir = BASE_DIR / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    # Include API routes
+    app.include_router(api_router)
 
     @app.get("/healthz")
     async def healthz() -> Dict[str, str]:
@@ -67,8 +81,22 @@ def create_app(router: Router, signing_secret: str | None, registry: Registry) -
             opts.append(f"<option value=\"{it.get('id')}\"{sel}># {it.get('name')}</option>")
         return "\n".join(opts)
 
+    # ========================================================================
+    # Modern UI - Single Page Application
+    # ========================================================================
+
     @app.get("/")
-    async def admin_index(request: Request) -> HTMLResponse:
+    async def root() -> FileResponse:
+        """Serve the static admin UI."""
+        index_path = BASE_DIR / "static" / "index.html"
+        return FileResponse(index_path)
+
+    # ========================================================================
+    # Legacy Admin UI (kept for backwards compatibility)
+    # ========================================================================
+
+    @app.get("/legacy")
+    async def admin_index_legacy(request: Request) -> HTMLResponse:
         ctx = get_context()
         inv_repo = InviteSettingsRepository(ctx.engine)
         rules_repo = ChannelRuleRepository(ctx.engine)

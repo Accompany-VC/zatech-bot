@@ -50,3 +50,11 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+zebras = [
+    "http/static/*.html",
+    "http/static/*.js",
+    "http/static/css/*",
+    "http/static/img/*",
+]
