@@ -52,7 +52,7 @@ services:
     environment:
       MODE: socket
       MIGRATE_ON_START: "0"
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
       DATABASE_URL: postgresql+asyncpg://zebras:zebras@postgres:5432/zebras

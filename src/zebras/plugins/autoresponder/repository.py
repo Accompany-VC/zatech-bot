@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from sqlalchemy import insert, select, update, delete
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from ...storage.models import AutoResponderRule
 
@@ -52,12 +52,12 @@ class AutoResponderRepository:
             return [dict(row._mapping) for row in res.all()]
 
     async def enabled_for_channel(self, channel_id: str) -> List[AutoResponderRule]:
-        async with self.engine.connect() as conn:
+        async with AsyncSession(self.engine) as session:
             stmt = select(AutoResponderRule).where(
                 (AutoResponderRule.enabled == True) & ((AutoResponderRule.channel_id == channel_id) | (AutoResponderRule.channel_id.is_(None)))  # noqa: E712
             ).order_by(AutoResponderRule.id.asc())
-            res = await conn.execute(stmt)
-            return list(res.scalars())
+            res = await session.execute(stmt)
+            return list(res.scalars().all())
 
     async def toggle(self, rid: int, enabled: bool) -> None:
         async with self.engine.begin() as conn:
