@@ -36,28 +36,42 @@ def _matches(rule, text: str) -> bool:
 
 
 def register(reg: Registry) -> None:
+    import logging
+    log = logging.getLogger("zebras.plugins.autoresponder")
+
     async def repo() -> AutoResponderRepository:
         return AutoResponderRepository(get_context().engine)
 
     @reg.events.on("message")
     async def on_message(payload: Dict[str, Any]) -> None:
         e = payload.get("event", payload)
+        log.debug(f"Autoresponder received message event: {e}")
+
         if e.get("subtype"):
+            log.debug(f"Skipping message with subtype: {e.get('subtype')}")
             return
         text = e.get("text") or ""
         if not text:
+            log.debug("Skipping message with no text")
             return
         channel = e.get("channel")
         ts = e.get("ts")
         rules = await (await repo()).enabled_for_channel(channel)
+        log.debug(f"Found {len(rules)} enabled rules for channel {channel}")
+
         for r in rules:
             # Defensive: ensure we have a rule object with expected attrs
             if not hasattr(r, "phrase") or not hasattr(r, "response_text") or not hasattr(r, "match_type") or not hasattr(r, "case_sensitive"):
+                log.warning(f"Rule {r.id if hasattr(r, 'id') else 'unknown'} missing required attributes")
                 continue
+            log.debug(f"Checking rule {r.id}: phrase='{r.phrase}', match_type={r.match_type}, text='{text}'")
             if _matches(r, text):
+                log.info(f"Rule {r.id} matched! Sending response: {r.response_text}")
                 client = await _client()
                 await client.chat_postMessage(channel=channel, text=r.response_text, thread_ts=ts)
                 break  # respond once per message
+        else:
+            log.debug(f"No rules matched for text: '{text}'")
 
     @reg.commands.slash("/auto")
     async def auto_cmd(payload: Dict[str, Any]) -> Dict[str, Any]:
