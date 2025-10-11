@@ -10,7 +10,7 @@ Async Slack bot scaffold for the ZATech community. Powered by Bolt for Python, F
    # edit .env to add your Slack tokens
    ```
 
-2. **Install dependencies** (use either pip/venv or uv)
+2. **Install dependencies** (using [uv](https://github.com/astral-sh/uv) is recommended, but plain `pip` works too)
    ```zsh
    # using uv (recommended)
    uv pip install -r requirements.txt
@@ -27,6 +27,7 @@ Async Slack bot scaffold for the ZATech community. Powered by Bolt for Python, F
    ```
    - The process starts the FastAPI server *and* opens a Socket Mode connection to Slack.
    - Visit `http://localhost:3000/health` for a simple readiness probe.
+   - Prefer `uv`, but if you used `pip` just run `uvicorn app:api --reload --port 3000` from the activated virtualenv.
 
 4. **Use the dashboard**
    - Open `http://localhost:3000/admin` to explore the admin UI.
