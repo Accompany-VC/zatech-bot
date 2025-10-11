@@ -121,6 +121,7 @@ The default `docker-compose.yml` provisions:
 - `db` service using Postgres 16 (port `5432`).
 - `DATABASE_URL` should point to `postgresql+asyncpg://postgres:postgres@db:5432/zatech_bot` in your `.env` when using compose.
 - Data persists via the `postgres-data` named volume; remove it with `docker volume rm zatech-bot_postgres-data` to reset.
+- Healthchecks ensure the bot waits for Postgres to become ready before initialising migrations.
 
 ## Troubleshooting
 
