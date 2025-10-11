@@ -1,0 +1,48 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Automod{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Automoderation Rules</h2>
+  <p>Create message patterns that trigger automatic responses. Patterns are regular expressions and match against the full message text.</p>
+</section>
+
+<section style="margin-top: 1.5rem; display: grid; gap: 1.5rem;">
+  <div>
+    <h3>Existing Rules</h3>
+    {% if rules %}
+      <ol>
+        {% for rule in rules %}
+          <li style="margin-bottom: 0.75rem;">
+            <code>{{ rule.pattern }}</code>
+            <div style="margin: 0.35rem 0;">Response: <em>{{ rule.response }}</em></div>
+            <form method="post" action="/admin/tabs/automod/rules/delete">
+              <input type="hidden" name="index" value="{{ loop.index0 }}">
+              <button type="submit" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 0.4rem 0.8rem; cursor: pointer;">Delete</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p>No rules yet. Add one below.</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <h3>Add Rule</h3>
+    <form method="post" action="/admin/tabs/automod/rules" style="display: grid; gap: 0.75rem; max-width: 480px;">
+      <label style="display: grid; gap: 0.3rem;">
+        <span>Pattern (regex)</span>
+        <input type="text" name="pattern" placeholder="e.g. (?i)\bspoiler\b" style="padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+      </label>
+      <label style="display: grid; gap: 0.3rem;">
+        <span>Response</span>
+        <textarea name="response" rows="3" style="padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;" placeholder="e.g. {mention} please use spoiler tags."></textarea>
+        <small>Use <code>{mention}</code> to mention the user.</small>
+      </label>
+      <button type="submit" style="background: #2563eb; color: white; padding: 0.6rem 1.2rem; border-radius: 6px; border: none; cursor: pointer;">Save rule</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

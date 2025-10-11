@@ -15,7 +15,8 @@ from core.events import EventRouter
 from core.logging import setup_logging
 from core.plugins import PluginContext, PluginManager
 from core.slack import create_slack_app
-from core.storage import InMemoryStorage
+from core.storage import InMemoryStorage, SQLModelStorage, Storage
+from sqlalchemy.engine.url import make_url
 from dashboards import AdminTab, DashboardRegistry
 
 # Load environment variables from .env if present
@@ -32,7 +33,24 @@ slack_handler = AsyncSlackRequestHandler(slack_app)
 socket_mode_handler = AsyncSocketModeHandler(slack_app, config.slack_app_token)
 
 event_router = EventRouter()
-storage = InMemoryStorage()
+
+if config.database_url:
+    try:
+        url = make_url(config.database_url)
+        backend = url.get_backend_name()
+    except Exception:  # pragma: no cover - invalid URLs fall back
+        backend = None
+
+    if backend in {"sqlite", "postgresql"}:
+        storage = SQLModelStorage(config.database_url)
+    else:
+        logger.warning(
+            "Unsupported DATABASE_URL backend '%s'; falling back to in-memory storage",
+            backend,
+        )
+        storage = InMemoryStorage()
+else:
+    storage = InMemoryStorage()
 plugin_manager = PluginManager()
 templates = Jinja2Templates(directory="templates")
 dashboard = DashboardRegistry(templates)
@@ -76,6 +94,7 @@ dashboard.register_tab(
 @api.on_event("startup")
 async def start_services() -> None:
     logger.info("Starting Socket Mode handler")
+    await storage.init()
     api.state.socket_task = asyncio.create_task(socket_mode_handler.start_async())
     await plugin_manager.startup(plugin_context)
 
@@ -89,6 +108,7 @@ async def stop_services() -> None:
     if task:
         with suppress(asyncio.CancelledError):
             await task
+    await storage.close()
 
 
 @api.post("/slack/events")
@@ -103,6 +123,7 @@ async def health_check() -> dict:
 
 @api.get("/admin", response_class=HTMLResponse)
 async def admin_index(request: Request):
+    
     return await dashboard.render_index(request)
 
 

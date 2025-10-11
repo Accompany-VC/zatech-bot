@@ -9,12 +9,12 @@
 ## Architecture Overview
 
 ### Runtime Components
-- **FastAPI web server**: Hosts `/slack/events`, `/health`, and future admin dashboard routes. Manages lifecycle of Socket Mode handler.
-- **Slack AsyncApp**: Receives Slack events, commands, actions, and dispatches to registered handlers.
-- **Plugin Manager**: Discovers, loads, and registers plugin modules. Provides dependency injection helpers (e.g., logging, Slack clients, configuration storage).
-- **Event Router**: Normalises Slack events into internal message objects and forwards them to interested plugins (publish/subscribe model).
-- **State & Config Layer**: Abstracts persistence (initially file-based or in-memory; later optional database) for plugin settings, rules, and audit logs.
-- **Task Runner**: Shared async utilities (scheduling, background jobs) for plugins needing timers or long-running tasks.
+- **FastAPI web server**: Hosts `/slack/events`, `/health`, `/admin/*`, and manages Socket Mode lifecycle inside startup/shutdown hooks.
+- **Slack AsyncApp**: Listeners are registered per-plugin; Socket Mode keeps the connection open without public ingress.
+- **Plugin Manager**: Discovers plugin packages, injects shared context (logging, storage, dashboard, router) and runs lifecycle hooks (`register`, `register_routes`, `startup`, `shutdown`).
+- **Event Router**: Optional publish/subscribe mechanism for internal cross-plugin events (e.g., automod triggers notifying logging plugins).
+- **State & Config Layer**: Storage abstraction defaults to SQLModel (`sqlite+aiosqlite` or `postgresql+asyncpg`) and falls back to an in-memory dict when no driver is available. Each plugin uses its own namespace + key scheme to avoid collisions.
+- **Task Runner**: TBD; will host cron/queue utilities when plugins need timers or background jobs.
 
 ### Directory Sketch
 ```
@@ -67,11 +67,12 @@
 - **Message Delete/Update**: Use `message_changed`, `message_deleted` with channel allowlist.
 - **Storage**: Initially local SQLite using SQLModel/SQLAlchemy; interface via `core.storage` for swap.
 
-### Message Rules Engine
+### Message Rules Engine & Automod
 - Central `RuleEngine` plugin providing DSL for allow/deny rules.
 - Conditions: channel, thread status, user role (admin/mod), message type (bot/human), keywords.
 - Actions: block (delete message via API), warn (DM user), log event, escalate to admin channel.
 - Integrate with `Invite Helper` and `Auto Join` features.
+- **Automod plugin (implemented)**: Manages regex → response rules stored under the `automod` namespace. Provides admin UI for CRUD operations and responds via Socket Mode listener. Serves as the thin layer before the broader rule engine.
 
 ### Other Modules
 - **Invite Helper**: Listen to `member_joined_channel` or audit logs, enforce invitation policies.
@@ -117,4 +118,3 @@
 - How to expose real-time moderation alerts (Socket Mode to admin dashboard via websockets?).
 - versioning strategy for plugins, compatibility guarantees.
 - Multi-workspace support (per-workspace tokens/config?).
-

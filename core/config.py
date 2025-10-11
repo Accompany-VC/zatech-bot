@@ -15,6 +15,7 @@ class AppConfig:
     log_level: str = "INFO"
     plugin_packages: List[str] = field(default_factory=lambda: ["plugins"])
     enabled_plugins: List[str] = field(default_factory=list)
+    database_url: Optional[str] = None
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -39,6 +40,9 @@ class AppConfig:
         enabled_plugins_raw = os.getenv("ENABLED_PLUGINS", "")
         enabled_plugins = [slug.strip() for slug in enabled_plugins_raw.split(",") if slug.strip()]
 
+        raw_db_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./bot.db")
+        database_url = raw_db_url.strip() or None
+
         return cls(
             slack_bot_token=bot_token,
             slack_app_token=app_token,
@@ -46,4 +50,5 @@ class AppConfig:
             log_level=log_level,
             plugin_packages=plugin_packages,
             enabled_plugins=enabled_plugins,
+            database_url=database_url,
         )

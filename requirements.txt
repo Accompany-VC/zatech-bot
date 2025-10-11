@@ -4,5 +4,10 @@ python-dotenv
 fastapi
 uvicorn[standard]
 aiohttp
+sqlmodel
+aiosqlite
+asyncpg
+psycopg[binary]
 jinja2
 python-multipart
+greenlet

@@ -27,3 +27,4 @@ coverage/
 
 # Misc
 *.sqlite3
+bot.db
