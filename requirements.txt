@@ -1,0 +1,8 @@
+slack-bolt
+slack-cli-hooks<1.0.0
+python-dotenv
+fastapi
+uvicorn[standard]
+aiohttp
+jinja2
+python-multipart

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}Admin{% endblock %} | Zatech Bot</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1c1c1c; }
+      header { background: #1e293b; color: #f8fafc; padding: 1rem 2rem; }
+      header h1 { margin: 0; font-size: 1.5rem; }
+      nav { background: #0f172a; padding: 0.5rem 2rem; display: flex; gap: 1rem; }
+      nav a { color: #cbd5f5; text-decoration: none; padding: 0.25rem 0.5rem; border-radius: 4px; }
+      nav a.active { background: #38bdf8; color: #0f172a; }
+      main { padding: 2rem; max-width: 960px; margin: 0 auto; }
+      section { background: #ffffff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
+      footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.85rem; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Zatech Bot Admin</h1>
+    </header>
+    <nav>
+      {% for tab in tabs %}
+        <a href="/admin/tabs/{{ tab.slug }}" class="{% if active_tab and active_tab.slug == tab.slug %}active{% elif not active_tab and loop.first %}active{% endif %}">
+          {{ tab.label }}
+        </a>
+      {% endfor %}
+    </nav>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    <footer>
+      Built for Slack communities · {{ tabs|length }} tabs loaded
+    </footer>
+  </body>
+</html>

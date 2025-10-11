@@ -1,0 +1,22 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Overview{% endblock %}
+
+{% block content %}
+<section>
+  <h2>System Overview</h2>
+  <p>Socket Mode status: <strong>{{ socket_status }}</strong></p>
+  <p>Workspace: <strong>{{ workspace or 'Unknown' }}</strong></p>
+</section>
+
+<section style="margin-top: 1.5rem;">
+  <h3>Loaded Plugins ({{ plugins|length }})</h3>
+  <ul>
+    {% for plugin in plugins %}
+      <li>
+        <strong>{{ plugin.name }}</strong> ({{ plugin.key }}) · {{ plugin.description or 'No description' }}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

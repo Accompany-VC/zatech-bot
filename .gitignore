@@ -1,0 +1,29 @@
+# Virtual environments & build artifacts
+.venv/
+*.pyc
+__pycache__/
+
+# Editor folders
+.vscode/
+.idea/
+
+# Local env
+.env
+.env.local
+
+# Logs & cache
+*.log
+.cache/
+
+# Uvicorn & pytest
+coverage/
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# UV lock/state
+.uv/
+
+# Misc
+*.sqlite3
