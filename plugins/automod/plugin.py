@@ -1,3 +1,5 @@
+"""Keyword-based automoderator plugin with dashboard CRUD for regex responses."""
+
 from __future__ import annotations
 
 import re

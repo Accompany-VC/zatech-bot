@@ -8,7 +8,7 @@ Async Slack bot scaffold for the ZATech community. Powered by Bolt for Python, F
    ```zsh
    cp .env.example .env
    # edit .env to add your Slack tokens (adjust DATABASE_URL if you want a different location)
-   # For docker compose + Postgres, set:
+   # For docker compose + Postgres, or without Docker (you'll need to setup a database locally) set:
    # DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/zatech_bot
    ```
 
@@ -28,9 +28,15 @@ Async Slack bot scaffold for the ZATech community. Powered by Bolt for Python, F
    ```zsh
    uv run uvicorn app:api --reload --port 3000
    ```
+
+   or with plain `uvicorn`
+
+   ```zsh
+   uvicorn app:api --reload --port 3000
+   ```
+
    - The process starts the FastAPI server *and* opens a Socket Mode connection to Slack.
    - Visit `http://localhost:3000/health` for a simple readiness probe.
-   - Prefer `uv`, but if you used `pip` just run `uvicorn app:api --reload --port 3000` from the activated virtualenv.
    - SQLite persistence writes to `bot.db` by default; change or clear `DATABASE_URL` to point elsewhere or fall back to in-memory storage.
 
 4. **Use the dashboard**
@@ -68,6 +74,17 @@ Async Slack bot scaffold for the ZATech community. Powered by Bolt for Python, F
 
 The `PluginContext` bundles logging, storage, event router, Slack app, FastAPI app, and dashboard helpers so features stay decoupled.
 
+```mermaid
+flowchart LR
+    SlackEvent((Slack Event)) -->|Socket Mode| Bolt[AsyncApp]
+    Bolt -->|PluginManager dispatch| PluginA[Plugin A]
+    Bolt --> PluginB[Plugin B]
+    PluginA -->|use context.storage| Storage[(SQLModel/Memory)]
+    PluginB -->|render| Dashboard[/Admin Tabs/]
+    PluginA -->|publish| EventRouter
+    EventRouter --> PluginB
+```
+
 ### Event flow
 
 1. Slack delivers an event over Socket Mode.
@@ -91,37 +108,31 @@ Optional environment knobs:
 - `HOST` / `PORT` &mdash; override the default bind address/port when running via Docker.
 - `UVICORN_LOG_LEVEL` &mdash; adjust the server logging inside the container.
 
-## Docker
+## Docker & Compose
 
-Build and run the bot in a container:
-
-```bash
-# 1. Build the image
-docker build -t zatech-bot:latest .
-
-# 2. Run (mount a local .env or pass env vars directly)
-docker run --env-file .env -p 3000:3000 zatech-bot:latest
-```
-
-Notes:
-- The container exposes port 3000; map it as needed with `-p`.
-- Persist SQLite by mounting a volume: `-v $(pwd)/bot.db:/app/bot.db` and set `DATABASE_URL=sqlite+aiosqlite:///./bot.db`.
-- For Postgres, set `DATABASE_URL=postgresql+asyncpg://user:pass@host/db` (ensure the DB is reachable from the container).
-
-### Docker Compose
-
-Running both the bot and Postgres locally:
+### Compose (recommended for local)
 
 ```bash
 docker compose up --build
 ```
 
-The default `docker-compose.yml` provisions:
-- `app` service running the bot (port `3000` exposed).
-- `db` service using Postgres 16 (port `5432`).
-- `DATABASE_URL` should point to `postgresql+asyncpg://postgres:postgres@db:5432/zatech_bot` in your `.env` when using compose.
-- Data persists via the `postgres-data` named volume; remove it with `docker volume rm zatech-bot_postgres-data` to reset.
-- Healthchecks ensure the bot waits for Postgres to become ready before initialising migrations.
+The provided compose stack launches:
+- `app`: the bot, exposed on `http://localhost:3000`, with automatic Socket Mode startup.
+- `db`: Postgres 16, exposed on `localhost:5432` for inspection.
+
+Checklist:
+- `.env` must include `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/zatech_bot`.
+- Data is stored in the `postgres-data` named volume (`docker volume rm zatech-bot_postgres-data` resets it).
+- Compose healthchecks delay bot boot until Postgres passes `pg_isready`.
+
+### Building standalone image
+
+```bash
+docker build -t zatech-bot:latest .
+docker run --env-file .env -p 3000:3000 zatech-bot:latest
+```
+
+Mount `-v $(pwd)/bot.db:/app/bot.db` for SQLite persistence or point `DATABASE_URL` at an external Postgres instance.
 
 ## Troubleshooting
 

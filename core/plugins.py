@@ -1,3 +1,5 @@
+"""Plugin infrastructure: discovery, context wiring, and lifecycle helpers."""
+
 from __future__ import annotations
 
 import importlib

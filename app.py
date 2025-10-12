@@ -1,3 +1,5 @@
+"""FastAPI + Slack Socket Mode bootstrap, plugin wiring, and admin dashboard."""
+
 import asyncio
 import logging
 import os

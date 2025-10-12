@@ -1,35 +1,40 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `app.py`: FastAPI entrypoint that wires Socket Mode, plugin discovery, and dashboard routes.
+- `app.py`: FastAPI bootstrap that loads env config, instantiates the Bolt `AsyncApp`, runs Socket Mode, and mounts admin routes.
 - `core/`: shared infrastructure (`config`, `plugins`, `events`, `storage`, `logging`, `slack`).
-- `plugins/`: each subfolder (for example `hello`, `automod`) ships its own `plugin.py`, optional `templates/`, and FastAPI routes.
-- `dashboards/`: dashboard registry utilities; shared admin layout lives under `templates/admin/`.
-- `requirements.txt`, `Dockerfile`, and `docker-compose.yml`: packaging and deployment assets.
-- `tests/`: create module-aligned test suites here; mirror the package layout (`tests/plugins/test_hello.py`, etc.).
+- `plugins/`: each plugin is a package (e.g. `hello`, `automod`) with `plugin.py` plus optional `templates/` and FastAPI routes.
+- `dashboards/` and `templates/admin/`: admin dashboard registry and shared layouts.
+- `tests/`: mirror source layout when adding suites (`tests/plugins/test_automod.py`).
 
-## Build, Test, and Development Commands
-- `uv pip install -r requirements.txt` (or `pip install -r requirements.txt`): install dependencies.
-- `uv run uvicorn app:api --reload --port 3000`: run the dev server with live reload using SQLite by default.
-- `docker compose up --build`: launch the bot plus Postgres using the provided docker-compose file; ensure `.env` exports `DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/zatech_bot`.
-- `uv run pytest`: execute the pytest suite (add tests under `tests/`).
+## Plugin System Overview
+- Discovery: `PluginManager` scans `PLUGIN_PACKAGES` for `*/plugin.py` exposing a `BasePlugin` instance.
+- Context: every plugin receives a `PluginContext` containing the Slack app, FastAPI app, dashboard registry, storage, config, and event router.
+- Hooks: implement `register` (Slack listeners, admin tabs, event subscribers), optional `register_routes`, plus `on_startup` / `on_shutdown` for async work.
+- Storage: use `context.storage.set("<namespace>", key, value)` with JSON-serialisable payloads. Namespaces must be unique per plugin.
+- Creating a plugin:
+  1. `mkdir plugins/my_plugin && touch plugins/my_plugin/__init__.py plugins/my_plugin/plugin.py`.
+  2. In `plugin.py`, subclass `BasePlugin`, set `key`, and register listeners/admin UI.
+  3. Optionally call `context.dashboard.add_template_dir("my_plugin", Path(__file__).parent / "templates")` for custom tabs.
+  4. Add tests under `tests/plugins/test_my_plugin.py`.
 
-## Coding Style & Naming Conventions
-- Python 3.12, 4‑space indentation, type hints required on public functions.
-- Modules named lower_snake_case; classes use PascalCase; plugin keys remain lower-case identifiers (e.g. `key = "automod"`).
-- Keep functions concise and prefer dataclasses for structured config. Follow PEP 484/PEP 8; run `python -m compileall` before committing to catch syntax errors.
+## Development vs Production
+- Local dev: `uv pip install -r requirements.txt` then `uv run uvicorn app:api --reload --port 3000` (SQLite default, live reload, Slack tokens from `.env`).
+- Docker dev: `docker compose up --build` launches the bot plus Postgres with health-checked startup.
+- Production: build the image (`docker build -t zatech-bot .`), deploy behind a process supervisor (ECS/Kubernetes). Set `HOST=0.0.0.0`, `PORT=<public>`, and production-grade `SLACK_*` secrets. Disable `--reload`.
 
-## Testing Guidelines
-- Use `pytest` for unit and integration tests; place files under `tests/` mirroring source paths (e.g. `tests/core/test_storage.py`).
-- Name test functions `test_<behavior>` and fixtures in `conftest.py`.
-- Aim for ≥80 % coverage on new code; include async tests for Slack handlers with Faker or stub clients.
+## Database Setup
+- Default `DATABASE_URL=sqlite+aiosqlite:///./bot.db` (writes inside container unless volume-mounted).
+- Postgres: `DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname`. Compose example uses `postgres:postgres@db:5432/zatech_bot` with a `postgres-data` volume.
+- `SQLModelStorage` auto-creates the `key_value` table and retries until the DB is reachable.
 
-## Commit & Pull Request Guidelines
-- Use clear, imperative commit subjects (e.g. `Add automod plugin storage retry logic`).
-- Squash experimental commits before opening PRs; keep diffs scoped to a single concern.
-- PRs should include: summary of changes, testing evidence (`uv run pytest` output or docker compose logs), configuration notes (env vars, migrations), and screenshots for dashboard updates.
+## Build, Test, and QA Commands
+- `uv pip install -r requirements.txt` — install deps.
+- `uv run pytest` — run the test suite (target ≥80 % coverage on new code).
+- `uv run uvicorn app:api --port 3000` — manual run (no reload) suitable for staging.
+- `docker compose logs app` — monitor application output in containerised environments.
 
-## Security & Configuration Tips
-- Never commit `.env` values; rely on `.env.example` for placeholders. Tokens must be set via secrets in CI/CD or Compose.
-- For Postgres, stick with the provided compose credentials in development; rotate in production and enable `sslmode=require` by appending `?sslmode=require` to `DATABASE_URL`.
-- Review plugin namespaces before storing data to avoid collisions (`storage.set("my_plugin", ...)`).
+## Coding Style & PR Expectations
+- Python 3.12, 4-space indent, type hints on public APIs, follow PEP 8/484. Prefer dataclasses for structured config.
+- Commit messages: imperative mood (“Add automod retry backoff”).
+- PRs must include a summary, testing evidence (`pytest` or compose logs), configuration changes (env vars, migrations), and screenshots for dashboard updates.
