@@ -8,6 +8,7 @@ from contextlib import suppress
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slack_bolt.adapter.fastapi.async_handler import AsyncSlackRequestHandler
 from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
@@ -33,6 +34,7 @@ slack_app = create_slack_app(config)
 api = FastAPI()
 slack_handler = AsyncSlackRequestHandler(slack_app)
 socket_mode_handler = AsyncSocketModeHandler(slack_app, config.slack_app_token)
+api.mount("/static", StaticFiles(directory="static"), name="static")
 
 event_router = EventRouter()
 
