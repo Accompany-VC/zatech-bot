@@ -98,6 +98,9 @@ class ModLogPlugin(BasePlugin):
 
         @app.event("message")
         async def handle_message_events(event: Dict[str, Any], **kwargs: Any) -> None:
+            # Slack emits the "message" event for edits/deletions and supplies the
+            # previous message snapshot in the payload, so we do not persist any
+            # message history ourselves.
             subtype = event.get("subtype")
             if subtype == "message_deleted":
                 await post_log(format_message_deleted_event(event))
