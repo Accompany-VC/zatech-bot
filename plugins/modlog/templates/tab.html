@@ -1,0 +1,99 @@
+{% extends "admin/layout.html" %} {% block title %}Mod Log{% endblock %} {%
+block content %}
+<section>
+    <h2>Moderation Log Settings</h2>
+    <p>
+        Choose a destination channel where moderation events will be posted.
+        Supported events include member joins, profile updates, channel changes,
+        and message deletions or edits.
+    </p>
+</section>
+
+<section style="margin-top: 1.5rem; display: grid; gap: 1.5rem">
+    <div>
+        <h3>Current Configuration</h3>
+        {% if channel_preview %}
+        <p>Logging to {{ channel_preview }}.</p>
+        {% else %}
+        <p>
+            No channel configured. Moderation events will be skipped until a
+            channel is set.
+        </p>
+        {% endif %}
+    </div>
+
+    <div>
+        <h3>Update Channel</h3>
+        <form
+            method="post"
+            action="/admin/tabs/modlog/settings"
+            style="display: grid; gap: 0.75rem; max-width: 460px"
+        >
+            <label style="display: grid; gap: 0.35rem">
+                <span>Channel ID or mention</span>
+                <input
+                    type="text"
+                    name="channel_id"
+                    value="{{ settings.channel_id }}"
+                    placeholder="e.g. C01234567 or paste a channel mention"
+                    style="
+                        padding: 0.5rem;
+                        border-radius: 6px;
+                        border: 1px solid #cbd5e1;
+                    "
+                />
+            </label>
+            <p style="font-size: 0.9rem; color: #475569">
+                Paste a Slack channel mention (like
+                <code>&lt;#C01234567|mod-log&gt;</code>) or enter the channel ID
+                directly.
+            </p>
+            <button
+                type="submit"
+                style="
+                    background: #2563eb;
+                    color: white;
+                    padding: 0.6rem 1.2rem;
+                    border-radius: 6px;
+                    border: none;
+                    cursor: pointer;
+                "
+            >
+                Save
+            </button>
+        </form>
+        <div style="margin-top: 1rem; display: grid; gap: 0.75rem">
+            <p style="font-size: 0.9rem; color: #1f2937">
+                To find the channel ID in Slack, open the channel sidebar,
+                choose <strong>View channel details</strong>, go to the
+                <strong>About</strong> tab, and copy the
+                <strong>Channel ID</strong> shown near the bottom.
+            </p>
+            <figure
+                style="
+                    background: #ffffff;
+                    padding: 0.75rem;
+                    border-radius: 8px;
+                "
+            >
+                <img
+                    src="{{ request.url_for('static', path='img/mod-log-where-to-find-channel-id.png') }}"
+                    alt="Slack channel details panel highlighting the channel ID field"
+                    style="width: 100%; border-radius: 6px"
+                />
+                <figcaption
+                    style="
+                        font-size: 0.8rem;
+                        color: #000000;
+                        text-align: center;
+                        margin-top: 0.5rem;
+                    "
+                >
+                    Channel details pane showing the highlighted Channel ID
+                    field.
+                </figcaption>
+            </figure>
+        </div>
+    </div>
+</section>
+{% endblock %}

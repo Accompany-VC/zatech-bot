@@ -1,0 +1,2 @@
+"""Moderation log plugin package."""
+
