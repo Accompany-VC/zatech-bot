@@ -5,8 +5,10 @@
     <title>{% block title %}Admin{% endblock %} | Zatech Bot</title>
     <style>
       body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1c1c1c; }
-      header { background: #1e293b; color: #f8fafc; padding: 1rem 2rem; }
+      header { background: #1e293b; color: #f8fafc; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
       header h1 { margin: 0; font-size: 1.5rem; }
+      .logout-button { background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+      .logout-button:hover { background: #dc2626; }
       nav { background: #0f172a; padding: 0.5rem 2rem; display: flex; gap: 1rem; }
       nav a { color: #cbd5f5; text-decoration: none; padding: 0.25rem 0.5rem; border-radius: 4px; }
       nav a.active { background: #38bdf8; color: #0f172a; }
@@ -18,6 +20,9 @@
   <body>
     <header>
       <h1>Zatech Bot Admin</h1>
+      <form method="POST" action="/admin/logout" style="margin: 0;">
+        <button type="submit" class="logout-button">Logout</button>
+      </form>
     </header>
     <nav>
       {% for tab in tabs %}
@@ -33,4 +38,11 @@
       Built for Slack communities · {{ tabs|length }} tabs loaded
     </footer>
   </body>
+
+  <!-- Firebase SDK for logout -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+  <script src="/static/admin/firebase-config.js"></script>
+  <script src="/static/admin/logout.js"></script>
+
 </html>
