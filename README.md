@@ -41,12 +41,14 @@ Async Slack bot scaffold for the ZATech community. Powered by Bolt for Python, F
 
 4. **Use the dashboard**
    - Open `http://localhost:3000/admin` to explore the admin UI.
-   - Tabs are provided by plugins; the default `hello` plugin shows greeting stats/settings and the `automod` plugin manages keyword responses.
+   - The `autoresponder` plugin manages greetings in #introductions (templated + AI) and pattern-based auto-responses, while the `modlog` plugin captures moderation events.
 
 5. **Try it out**
-   - Invite the bot to a channel and say “hello”.
-   - Adjust the greeting template or broadcast toggle from the Hello plugin tab.
-   - Add an AutoMod rule (e.g., pattern `(?i)\bsafe space\b`) and see the bot reply automatically.
+   - Post a message in a channel named `#introductions` and watch the bot greet the user automatically.
+   - Visit the AutoResponder tab to customize the greeting template or add auto-response rules.
+   - Add a rule (e.g., pattern `(?i)\bhelp\b`, response "Need assistance? Ask in #support!") and see the bot reply when users match the pattern.
+   - Edit or delete messages to see modlog capture the events.
+   - (Optional) Configure the AutoResponder → Greetings tab with an OpenAI API key and pick between the gpt-5-nano or gpt-5-mini models for AI-powered personalized greetings that suggest relevant channels based on user introductions.
 
 ## Architecture Overview
 
@@ -60,8 +62,8 @@ Async Slack bot scaffold for the ZATech community. Powered by Bolt for Python, F
 
 - Backed by SQLite via SQLModel by default (`DATABASE_URL=sqlite+aiosqlite:///./bot.db`). Use Postgres with `postgresql+asyncpg://user:pass@host/db`. Unknown backends fall back to the in-memory store.
 - The `Storage` API is key/value based. Plugins must choose a unique namespace and key—for example:
-  - `hello` namespace stores `greetings_sent` and `settings`.
-  - `automod` namespace stores an array of keyword/response rule objects.
+  - `autoresponder` namespace stores greeting settings, greeting counter, and auto-response rule objects.
+  - `modlog` namespace stores moderation log settings (configured channel ID).
 - Because namespaces are independent, adding a new plugin only requires picking a new namespace; no schema migrations collide.
 - If a plugin needs structured tables later, it can declare its own SQLModel models and use the shared engine created by `SQLiteStorage`.
 
@@ -97,7 +99,29 @@ flowchart LR
 - Create a new directory under `plugins/`, add a `plugin.py` that exposes a `plugin` instance derived from `BasePlugin`.
 - Register Slack listeners in `register`, FastAPI routes in `register_routes`, and optional startup/shutdown hooks.
 - Provide admin UI assets by calling `context.dashboard.add_template_dir("<name>", path)` and referencing templates as `<name>/your_tab.html`.
-- Use `context.storage` for per-plugin state (see `plugins/hello` for an example with saved settings).
+- Use `context.storage` for per-plugin state (see `plugins/autoresponder` for an example with saved settings).
+
+### Available Plugins
+
+#### AutoResponder (`autoresponder`)
+Handles greetings in #introductions (templated + AI) and pattern-based auto-responses.
+- **Features:**
+  - Automatic welcome messages for new members posting in #introductions
+  - Configurable greeting template with `{mention}` placeholder
+  - Optional AI-powered greetings that personalise the response and suggest relevant channels
+  - Pattern-based auto-responses using regular expressions
+  - Track greeting counts in the admin dashboard (templated + AI)
+- **Configuration:**
+  - Visit `/admin/tabs/autoresponder` to manage pattern rules
+  - Visit `/admin/tabs/autoresponder_greeter` to configure greeter templates and AI settings
+
+#### Mod Log (`modlog`)
+Captures and logs moderation events like message edits and deletions.
+- **Features:**
+  - Automatically logs message modifications and deletions
+  - Posts logs to a configured channel
+  - Includes user info, original content, and timestamps
+- **Configuration:** Visit `/admin/tabs/modlog` to set the logging channel
 
 Optional environment knobs:
 

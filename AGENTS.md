@@ -3,9 +3,9 @@
 ## Project Structure & Module Organization
 - `app.py`: FastAPI bootstrap that loads env config, instantiates the Bolt `AsyncApp`, runs Socket Mode, and mounts admin routes.
 - `core/`: shared infrastructure (`config`, `plugins`, `events`, `storage`, `logging`, `slack`).
-- `plugins/`: each plugin is a package (e.g. `hello`, `automod`) with `plugin.py` plus optional `templates/` and FastAPI routes.
+- `plugins/`: each plugin is a package (e.g. `autoresponder`, `modlog`) with `plugin.py` plus optional `templates/` and FastAPI routes.
 - `dashboards/` and `templates/admin/`: admin dashboard registry and shared layouts.
-- `tests/`: mirror source layout when adding suites (`tests/plugins/test_automod.py`).
+- `tests/`: mirror source layout when adding suites (`tests/plugins/test_autoresponder.py`, `tests/plugins/test_modlog.py`).
 
 ## Plugin System Overview
 - Discovery: `PluginManager` scans `PLUGIN_PACKAGES` for `*/plugin.py` exposing a `BasePlugin` instance.
@@ -36,5 +36,5 @@
 
 ## Coding Style & PR Expectations
 - Python 3.12, 4-space indent, type hints on public APIs, follow PEP 8/484. Prefer dataclasses for structured config.
-- Commit messages: imperative mood (“Add automod retry backoff”).
+- Commit messages: imperative mood ("Add autoresponder retry backoff").
 - PRs must include a summary, testing evidence (`pytest` or compose logs), configuration changes (env vars, migrations), and screenshots for dashboard updates.

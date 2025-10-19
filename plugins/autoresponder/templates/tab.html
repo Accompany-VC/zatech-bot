@@ -1,0 +1,204 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}AutoResponder Rules{% endblock %}
+
+{% block content %}
+<style>
+  .card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .card h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .card p {
+    color: #6b7280;
+    margin-bottom: 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .form-help {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .form-input, .form-textarea {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    transition: border-color 0.15s;
+  }
+
+  .form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 1.125rem;
+    height: 1.125rem;
+    cursor: pointer;
+  }
+
+  .btn {
+    padding: 0.625rem 1.25rem;
+    border-radius: 6px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: #2563eb;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #1d4ed8;
+  }
+
+  .btn-danger {
+    background: #dc2626;
+    color: white;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-danger:hover {
+    background: #b91c1c;
+  }
+
+  .rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .rules-table th {
+    background: #f9fafb;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  .rules-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: top;
+  }
+
+  .rules-table tbody tr:hover {
+    background: #f9fafb;
+  }
+
+  .pattern-code {
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: #111827;
+  }
+
+  .divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 2.5rem 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #9ca3af;
+  }
+</style>
+
+<div class="card">
+  <h2>Auto-Response Rules</h2>
+  <p>Create message patterns that trigger automatic responses. Patterns are regular expressions and match against the full message text.</p>
+
+  {% if rules %}
+    <table class="rules-table">
+      <thead>
+        <tr>
+          <th style="width: 40%;">Pattern</th>
+          <th style="width: 45%;">Response</th>
+          <th style="width: 15%; text-align: center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules %}
+          <tr>
+            <td><code class="pattern-code">{{ rule.pattern }}</code></td>
+            <td>{{ rule.response }}</td>
+            <td style="text-align: center;">
+              <form method="post" action="/admin/tabs/autoresponder/rules/delete" style="display: inline;">
+                <input type="hidden" name="index" value="{{ loop.index0 }}">
+                <button type="submit" class="btn btn-danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">
+      <p>No rules configured yet. Add one below to get started.</p>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Add New Rule</h2>
+  <form method="post" action="/admin/tabs/autoresponder/rules" style="max-width: 600px;">
+    <div class="form-group">
+      <label class="form-label">Pattern (Regular Expression)</label>
+      <input type="text" name="pattern" class="form-input" placeholder="e.g. (?i)\bspoiler\b">
+      <small class="form-help">Use regex patterns to match messages. Example: <code>(?i)\bhelp\b</code> matches "help" case-insensitively.</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Response Message</label>
+      <textarea name="response" rows="3" class="form-textarea" placeholder="e.g. {mention} please use spoiler tags for that content."></textarea>
+      <small class="form-help">Use <code>{mention}</code> to mention the user who triggered the rule.</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add Rule</button>
+  </form>
+</div>
+{% endblock %}
