@@ -158,7 +158,7 @@ async def get_current_user(request: Request) -> Optional[dict]:
 
     
 async def require_auth(request: Request) -> dict:
-    """FastAPI dependency for routes requiring authentication."""
+    """FastAPI dependency for routes requiring authentication (AI was used to help write this function)."""
 
     user = await get_current_user(request)
 

@@ -1,7 +1,8 @@
 """Admin dashboard authentication and security."""
 
 __all__ = [
-    "auth",
-    "security", 
+    "auth", 
     "cookies",
+    "csp", 
+    "rate_limit",
 ]
