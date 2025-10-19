@@ -8,6 +8,7 @@ This module handles:
 - Security logging & error handling
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -50,7 +51,7 @@ class FirebaseAuth:
             logger.info("Firebase Admin SDK initialized successfully.")
             
         except json.JSONDecodeError as e:
-            logger.error("Invalid JSON in FIREBASE_CREDENTIALS_JSON: {e}")
+            logger.error(f"Invalid JSON in FIREBASE_CREDENTIALS_JSON: {e}")
             raise ValueError("Invalid Firebase credentials format") from e
         
         except Exception as e:
@@ -67,7 +68,7 @@ class FirebaseAuth:
         
         try:
             # Verify token with Firebase
-            decoded_token = auth.verify_id_token(id_token, check_revoked=True)
+            decoded_token = await asyncio.to_thread(auth.verify_id_token(id_token, check_revoked=True))
 
             # Extract user info
             user_email = decoded_token.get('email', 'unknown')
@@ -106,7 +107,7 @@ class FirebaseAuth:
             return False
         
         try:
-            user = auth.get_user(uid)
+            user = await asyncio.to_thread(auth.get_user(uid))
             
             if user.disabled:
                 logger.warning(f"User is disabled: {uid}")

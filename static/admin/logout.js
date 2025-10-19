@@ -10,9 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Sign out from Firebase
                 await firebaseAuth.signOut();
                 
-                // Clear the cookie
-                document.cookie = 'firebase_token=; path=/; max-age=0';
-                
                 // Clear server-side session
                 logoutForm.submit();
 

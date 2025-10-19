@@ -185,6 +185,10 @@ async def set_auth_token(request: Request):
     except HTTPException:
         raise
 
+    except ValueError as json_error:
+        logger.error(f"Invalid JSON from IP {client_ip}: {json_error}")
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
     except Exception as e:
         logger.error(f"Error setting auth token: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Authentication failed")

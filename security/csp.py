@@ -29,7 +29,7 @@ class CSPMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Only apply CSP to admin routes
-        if request.url.path.startswith("/admin/"):
+        if request.url.path == "/admin" or request.url.path.startswith("/admin/"):
             response.headers["Content-Security-Policy"] = self.csp_policy
 
         return response
