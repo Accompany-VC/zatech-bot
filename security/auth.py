@@ -67,8 +67,8 @@ class FirebaseAuth:
             return None
         
         try:
-            # Verify token with Firebase
-            decoded_token = await asyncio.to_thread(auth.verify_id_token(id_token, check_revoked=True))
+            # Verify token with Firebase (execute blocking call in thread)
+            decoded_token = await asyncio.to_thread(auth.verify_id_token, id_token, check_revoked=True)
 
             # Extract user info
             user_email = decoded_token.get('email', 'unknown')
@@ -107,7 +107,8 @@ class FirebaseAuth:
             return False
         
         try:
-            user = await asyncio.to_thread(auth.get_user(uid))
+            # Fetch user details without blocking the event loop
+            user = await asyncio.to_thread(auth.get_user, uid)
             
             if user.disabled:
                 logger.warning(f"User is disabled: {uid}")
