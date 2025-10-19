@@ -11,3 +11,4 @@ psycopg[binary]
 jinja2
 python-multipart
 greenlet
+openai>=2.0.0
