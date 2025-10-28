@@ -60,7 +60,8 @@ def _build_message_payload(mention: str, body: str, *, prepend_mention: bool = F
     if normalized_body:
         if requires_prepend:
             block_text = f"{mention}\n\n{normalized_body}"
-            fallback_text = f"{mention} {normalized_body.replace('\n', ' ')}"
+            normalized_single_line = normalized_body.replace('\n', ' ')
+            fallback_text = f"{mention} {normalized_single_line}"
         else:
             block_text = normalized_body
             fallback_text = normalized_body.replace('\n', ' ')
