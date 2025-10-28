@@ -64,7 +64,8 @@ def _build_message_payload(mention: str, body: str, *, prepend_mention: bool = F
             fallback_text = f"{mention} {normalized_single_line}"
         else:
             block_text = normalized_body
-            fallback_text = normalized_body.replace('\n', ' ')
+            normalized_single_line = normalized_body.replace('\n', ' ')
+            fallback_text = normalized_single_line
     else:
         block_text = mention
         fallback_text = mention
