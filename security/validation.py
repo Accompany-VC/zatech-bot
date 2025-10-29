@@ -128,7 +128,7 @@ def sanitize_openai_api_key(key: str, max_length: int = 200) -> str:
 
 
 def sanitize_model_identifier(value: str, max_length: int = 50) -> str:
-    """Sanitize model identifier"""
+    """Sanitize AI model identifier input."""
 
     if not isinstance(value, str):
         raise ValueError("Model identifier must be a string")
