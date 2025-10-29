@@ -7,12 +7,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import Request
+from fastapi import Depends, Request
 from fastapi.responses import RedirectResponse
 from starlette import status
+from urllib.parse import quote
 
 from core.plugins import BasePlugin, PluginContext
 from dashboards import AdminTab
+from security.auth import require_auth
+from security.validation import (
+    sanitize_autoresponder_response,
+    sanitize_channel_suggestions,
+    sanitize_greeting_template,
+    sanitize_model_identifier,
+    sanitize_openai_api_key,
+    sanitize_system_prompt,
+    validate_autoresponder_regex,
+)
 
 NAMESPACE = "autoresponder"
 RULES_KEY = "rules"
@@ -388,7 +399,8 @@ class AutoResponderPlugin(BasePlugin):
 
         async def rules_tab_context(request: Request, plugin_ctx: PluginContext) -> Dict[str, Any]:
             rules = await get_rules()
-            return {"rules": rules}
+            error = request.query_params.get("error", "")
+            return {"rules": rules, "error": error}
 
         async def greeter_tab_context(request: Request, plugin_ctx: PluginContext) -> Dict[str, Any]:
             greeter_settings = await get_greeter_settings()
@@ -402,6 +414,8 @@ class AutoResponderPlugin(BasePlugin):
                 active_mode = "template"
             else:
                 active_mode = "disabled"
+            # Extract error from query params if present
+            error = request.query_params.get("error", "")
             return {
                 "greeter_settings": greeter_settings,
                 "greeter_count": greeter_count,
@@ -409,6 +423,7 @@ class AutoResponderPlugin(BasePlugin):
                 "ai_greeting_count": ai_greeting_count,
                 "channels_text": channels_text,
                 "active_mode": active_mode,
+                "error": error,
             }
 
         context.dashboard.register_tab(
@@ -437,27 +452,42 @@ class AutoResponderPlugin(BasePlugin):
 
     def register_routes(self, context: PluginContext) -> None:
         storage = context.storage
+        logger = context.get_logger(self.key)
 
         @context.fastapi_app.post("/admin/tabs/autoresponder/rules")
-        async def create_rule(request: Request):
+        async def create_rule(request: Request, user: dict = Depends(require_auth)):
             form = await request.form()
-            pattern = str(form.get("pattern", "")).strip()
-            response = str(form.get("response", "")).strip()
-            try:
-                compiled = re.compile(pattern)
-            except re.error:
-                return RedirectResponse("/admin/tabs/autoresponder", status_code=status.HTTP_303_SEE_OTHER)
+            raw_pattern = str(form.get("pattern", ""))
+            raw_response = str(form.get("response", ""))
 
-            if not response:
-                return RedirectResponse("/admin/tabs/autoresponder", status_code=status.HTTP_303_SEE_OTHER)
+            # Validate pattern and sanitize response
+            try:
+                cleaned_pattern = validate_autoresponder_regex(raw_pattern, max_length=500)
+                cleaned_response = sanitize_autoresponder_response(raw_response, max_length=1000)
+            except ValueError as exc:
+                logger.warning("Invalid autoresponder rule from %s: %s", user.get("email"), exc)
+                error_msg = quote(str(exc))
+                return RedirectResponse(f"/admin/tabs/autoresponder?error={error_msg}", status_code=status.HTTP_303_SEE_OTHER)
+
+            try:
+                compiled = re.compile(cleaned_pattern)
+            except re.error:
+                error_msg = quote("Invalid regex syntax (this should not happen after validation)")
+                return RedirectResponse(
+                    f"/admin/tabs/autoresponder?error={error_msg}", status_code=status.HTTP_303_SEE_OTHER
+                )
 
             rules = await storage.get(NAMESPACE, RULES_KEY) or []
-            rules.append({"pattern": compiled.pattern, "response": response, "flags": compiled.flags or re.IGNORECASE})
+            rules.append({
+                "pattern": compiled.pattern,
+                "response": cleaned_response,
+                "flags": compiled.flags or re.IGNORECASE,
+            })
             await storage.set(NAMESPACE, RULES_KEY, rules)
             return RedirectResponse("/admin/tabs/autoresponder", status_code=status.HTTP_303_SEE_OTHER)
 
         @context.fastapi_app.post("/admin/tabs/autoresponder/rules/delete")
-        async def delete_rule(request: Request):
+        async def delete_rule(request: Request, user: dict = Depends(require_auth)):
             form = await request.form()
             index_raw = form.get("index")
             try:
@@ -472,12 +502,19 @@ class AutoResponderPlugin(BasePlugin):
             return RedirectResponse("/admin/tabs/autoresponder", status_code=status.HTTP_303_SEE_OTHER)
 
         @context.fastapi_app.post("/admin/tabs/autoresponder_greeter/greeter/settings")
-        async def update_greeter_settings(request: Request):
+        async def update_greeter_settings(request: Request, user: dict = Depends(require_auth)):
             form = await request.form()
-            raw_template = form.get("greeting_template", DEFAULT_GREETER_SETTINGS["greeting_template"])
-            greeting_template = str(raw_template).strip()
-            if not greeting_template:
-                greeting_template = DEFAULT_GREETER_SETTINGS["greeting_template"]
+
+            raw_template = str(form.get("greeting_template", DEFAULT_GREETER_SETTINGS["greeting_template"]))
+            
+            # Sanitize greeting template
+            try:
+                greeting_template = sanitize_greeting_template(raw_template, max_length=2000)
+            except ValueError as exc:
+                logger.warning("Invalid greeter template from %s: %s", user.get("email"), exc)
+                error_msg = quote(str(exc))
+                return RedirectResponse(f"/admin/tabs/autoresponder_greeter?error={error_msg}", status_code=status.HTTP_303_SEE_OTHER)
+            
             enabled = form.get("enabled") == "on"
             await storage.set(
                 NAMESPACE,
@@ -494,26 +531,39 @@ class AutoResponderPlugin(BasePlugin):
             return RedirectResponse("/admin/tabs/autoresponder_greeter", status_code=status.HTTP_303_SEE_OTHER)
 
         @context.fastapi_app.post("/admin/tabs/autoresponder_greeter/ai/settings")
-        async def update_ai_greeter_settings(request: Request):
+        async def update_ai_greeter_settings(request: Request, user: dict = Depends(require_auth)):
             form = await request.form()
-
+            
             enabled = form.get("enabled") == "on"
-            openai_api_key = str(form.get("openai_api_key", "")).strip()
-            model = str(form.get("model", DEFAULT_AI_GREETER_SETTINGS["model"])).strip()
-            system_prompt = str(form.get("system_prompt", "")).strip()
-            channel_raw = str(form.get("channel_suggestions", "")).strip()
+            raw_api_key = str(form.get("openai_api_key", ""))
+            raw_model = str(form.get("model", DEFAULT_AI_GREETER_SETTINGS["model"]))
+            raw_system_prompt = str(form.get("system_prompt", ""))
+            raw_channel_suggestions = str(form.get("channel_suggestions", ""))
 
-            if not model:
-                model = DEFAULT_AI_GREETER_SETTINGS["model"]
+            # Sanitize all inputs
+            try:
+                openai_api_key = sanitize_openai_api_key(raw_api_key, max_length=200)
 
-            channel_suggestions = [
-                line.strip()
-                for line in channel_raw.split("\n")
-                if line.strip()
-            ]
-
-            if not system_prompt:
-                system_prompt = DEFAULT_AI_GREETER_SETTINGS["system_prompt"]
+                if raw_model.strip():
+                    model = sanitize_model_identifier(raw_model, max_length=50)
+                else:
+                    model = DEFAULT_AI_GREETER_SETTINGS["model"]
+                if raw_system_prompt.strip():
+                    system_prompt = sanitize_system_prompt(raw_system_prompt, max_length=5000)
+                else:
+                    system_prompt = DEFAULT_AI_GREETER_SETTINGS["system_prompt"]
+                cleaned_channel_text = sanitize_channel_suggestions(raw_channel_suggestions, max_length=2000)
+                
+                channel_suggestions = [
+                    line.strip()
+                    for line in cleaned_channel_text.split("\n")
+                    if line.strip()
+                ] if cleaned_channel_text else []
+                
+            except ValueError as exc:
+                logger.warning("Invalid AI greeter settings from %s: %s", user.get("email"), exc)
+                error_msg = quote(str(exc))
+                return RedirectResponse(f"/admin/tabs/autoresponder_greeter?error={error_msg}", status_code=status.HTTP_303_SEE_OTHER)
 
             await storage.set(
                 NAMESPACE,

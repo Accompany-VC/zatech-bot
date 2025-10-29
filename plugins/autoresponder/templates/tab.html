@@ -146,6 +146,30 @@
     padding: 2rem;
     color: #9ca3af;
   }
+
+  .error-message {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1.5rem;
+    color: #991b1b;
+    font-size: 0.9375rem;
+    opacity: 1;
+    visibility: visible;
+    max-height: 200px;
+    transition: opacity 0.5s ease-out, max-height 0.5s ease-out, padding 0.5s ease-out, margin 0.5s ease-out;
+  }
+
+  .error-message.hide {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
 </style>
 
 <div class="card">
@@ -185,6 +209,11 @@
 
 <div class="card">
   <h2>Add New Rule</h2>
+  {% if error %}
+    <div class="error-message" id="error-message">
+      <strong>Error:</strong> {{ error }}
+    </div>
+  {% endif %}
   <form method="post" action="/admin/tabs/autoresponder/rules" style="max-width: 600px;">
     <div class="form-group">
       <label class="form-label">Pattern (Regular Expression)</label>
@@ -201,4 +230,8 @@
     <button type="submit" class="btn btn-primary">Add Rule</button>
   </form>
 </div>
+
+{% if error %}
+<script src="/static/admin/error-message.js"></script>
+{% endif %}
 {% endblock %}

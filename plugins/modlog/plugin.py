@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from starlette import status
 
@@ -15,6 +15,8 @@ except ImportError:  # pragma: no cover
 
 from core.plugins import BasePlugin, PluginContext
 from dashboards import AdminTab
+from security.auth import require_auth
+from security.validation import sanitize_channel_input, validate_slack_channel_identifier
 from .utils import (
     format_channel_archive_event,
     format_channel_created_event,
@@ -132,12 +134,28 @@ class ModLogPlugin(BasePlugin):
 
     def register_routes(self, context: PluginContext) -> None:
         storage = context.storage
+        logger = context.get_logger(self.key)
 
         @context.fastapi_app.post("/admin/tabs/modlog/settings")
-        async def update_settings(request: Request):
+        async def update_settings(request: Request, user: dict = Depends(require_auth)):
             form = await request.form()
-            raw_channel = str(form.get("channel_id", "")).strip()
+            # Sanitize input 
+            try:
+                raw_channel = sanitize_channel_input(str(form.get("channel_id", "")), max_length=50)
+            except ValueError as exc:
+                logger.warning("Invalid modlog channel input from %s: %s", user.get("email"), exc)
+                raise HTTPException(status_code=400, detail=str(exc))
+
+            # Normalize to supported formats 
             channel_id = normalize_channel_identifier(raw_channel)
+
+            # Validate normalized value to prevent injection
+            try:
+                validate_slack_channel_identifier(channel_id)
+            except ValueError as exc:
+                logger.warning("Invalid modlog channel input from %s: %s", user.get("email"), exc)
+                raise HTTPException(status_code=400, detail=str(exc))
+
             settings = await storage.get(NAMESPACE, SETTINGS_KEY) or {}
             if not isinstance(settings, dict):
                 settings = {}
