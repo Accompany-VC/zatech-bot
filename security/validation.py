@@ -73,12 +73,14 @@ def validate_autoresponder_regex(pattern: str, max_length: int = 500) -> str:
 def sanitize_autoresponder_response(text: str, max_length: int = 1000) -> str:
     """Sanitize AutoResponder response text."""
 
-    if not isinstance(text, str) or not text:
+    if not isinstance(text, str):
         raise ValueError("Response cannot be empty")
     
     # Remove null bytes and trim whitespace
     text = text.replace("\x00", "").strip()
 
+    if not text:
+        raise ValueError("Response cannot be empty")
     # Enforce length limit
     if len(text) > max_length:
         raise ValueError(f"Response too long (max {max_length} characters)")
