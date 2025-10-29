@@ -82,10 +82,20 @@ plugin_manager.register_all(plugin_context)
 
 
 async def overview_context_provider(request: Request, ctx: PluginContext):
+    workspace_name = "Unknown workspace"
+    try:
+        # Fetch workspace name from Slack API
+        team_info = await slack_app.client.team_info()
+        if team_info and team_info.get("ok"):
+            workspace_name = team_info["team"]["name"]
+    except Exception:
+        # Fallback to env var if API call fails
+        workspace_name = os.getenv("SLACK_TEAM_NAME", "Unknown workspace")
+
     return {
         "plugins": plugin_manager.plugins,
         "socket_status": "running",
-        "workspace": os.getenv("SLACK_TEAM_NAME", "Unknown workspace"),
+        "workspace": workspace_name,
     }
 
 
