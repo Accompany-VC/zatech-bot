@@ -110,7 +110,7 @@ def sanitize_greeting_template(text: str, max_length: int = 2000) -> str:
 
 
 def sanitize_openai_api_key(key: str, max_length: int = 200) -> str:
-    """Sanitize OpenAI API key """
+    """Sanitize OpenAI API key input."""
 
     if not isinstance(key, str):
         raise ValueError("API key must be a string")
