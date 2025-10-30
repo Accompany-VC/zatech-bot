@@ -41,6 +41,17 @@ class FirebaseAuth:
             if not creds_json:
                 raise ValueError("FIREBASE_CREDENTIALS_JSON environment variable is not set.")
 
+            # Debug: Log the first 100 characters to see what we're getting
+            logger.debug(f"Firebase credentials (first 100 chars): {creds_json[:100]}")
+            logger.debug(f"Starts with quote: {creds_json[0] if creds_json else 'empty'}")
+
+            # Strip surrounding quotes if present (Docker Compose may include them)
+            creds_json = creds_json.strip()
+            if (creds_json.startswith("'") and creds_json.endswith("'")) or \
+               (creds_json.startswith('"') and creds_json.endswith('"')):
+                creds_json = creds_json[1:-1]
+                logger.debug("Stripped surrounding quotes from credentials")
+
             # Load credentials from JSON string
             creds_dict = json.loads(creds_json)
             cred = credentials.Certificate(creds_dict)
