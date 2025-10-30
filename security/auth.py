@@ -48,8 +48,15 @@ class FirebaseAuth:
                 creds_json = creds_json[1:-1]
                 logger.info("Stripped surrounding quotes from credentials")
 
-            # Load credentials from JSON string
-            creds_dict = json.loads(creds_json)
+            # Try to parse JSON - if it fails due to escaping, unescape and try again
+            try:
+                creds_dict = json.loads(creds_json)
+            except json.JSONDecodeError:
+                # Coolify and some hosting platforms escape the JSON string
+                # Unescape it by decoding backslash-escaped characters
+                logger.info("Initial JSON parse failed, attempting to unescape...")
+                creds_json = creds_json.encode().decode('unicode_escape')
+                creds_dict = json.loads(creds_json)
             cred = credentials.Certificate(creds_dict)
             logger.info("Loaded Firebase credentials from FIREBASE_CREDENTIALS_JSON.")
 
