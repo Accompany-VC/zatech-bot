@@ -41,16 +41,12 @@ class FirebaseAuth:
             if not creds_json:
                 raise ValueError("FIREBASE_CREDENTIALS_JSON environment variable is not set.")
 
-            # Debug: Log the first 100 characters to see what we're getting
-            logger.debug(f"Firebase credentials (first 100 chars): {creds_json[:100]}")
-            logger.debug(f"Starts with quote: {creds_json[0] if creds_json else 'empty'}")
-
-            # Strip surrounding quotes if present (Docker Compose may include them)
+            # Strip surrounding quotes if present (Docker Compose/Coolify may include them)
             creds_json = creds_json.strip()
             if (creds_json.startswith("'") and creds_json.endswith("'")) or \
                (creds_json.startswith('"') and creds_json.endswith('"')):
                 creds_json = creds_json[1:-1]
-                logger.debug("Stripped surrounding quotes from credentials")
+                logger.info("Stripped surrounding quotes from credentials")
 
             # Load credentials from JSON string
             creds_dict = json.loads(creds_json)
@@ -62,7 +58,11 @@ class FirebaseAuth:
             logger.info("Firebase Admin SDK initialized successfully.")
             
         except json.JSONDecodeError as e:
+            # Show more helpful error information
+            sample = creds_json[:200] if len(creds_json) > 200 else creds_json
             logger.error(f"Invalid JSON in FIREBASE_CREDENTIALS_JSON: {e}")
+            logger.error(f"First 200 chars of credentials: {repr(sample)}")
+            logger.error(f"Length: {len(creds_json)}, First char: {repr(creds_json[0]) if creds_json else 'empty'}")
             raise ValueError("Invalid Firebase credentials format") from e
         
         except Exception as e:
