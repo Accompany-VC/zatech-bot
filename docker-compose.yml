@@ -6,9 +6,9 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
-      PORT: 3000
+      PORT: 4321
     ports:
-      - "3000:3000"
+      - "4321:4321"
     volumes:
       - ./bot.db:/app/bot.db
     depends_on:
