@@ -228,7 +228,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "app:api",
         host=os.environ.get("HOST", "0.0.0.0"),
-        port=int(os.environ.get("PORT", "3000")),
+        port=int(os.environ.get("PORT", "4321")),
         reload=False,
         log_level=os.environ.get("UVICORN_LOG_LEVEL", "info"),
     )
